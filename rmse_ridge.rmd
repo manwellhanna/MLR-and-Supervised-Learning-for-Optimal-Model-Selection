@@ -1,0 +1,116 @@
+```{r}
+# load necessary packages
+library(dplyr)
+library(glmnet)
+library(caret)
+
+
+# load data
+dataset <- read.csv("/Users/manwell/Desktop/Northeastern University Files/Spring 2023/Stat Methods in Engineering - IE7280/Semester Project/Supervised_Learning_R/scaled_normalized_df.csv")
+# Set seed for reproducible random partitioning of data
+set.seed(1997)
+```
+```{r}
+# Partition data and create index matrix of selected values
+index <- createDataPartition(dataset$Y, p = 0.8, list=FALSE, times=1)
+
+# Create test and train data frames
+train_df <- dataset[index,]
+test_df <- dataset[-index,]
+
+# Specify 10-fold cross-validation as training method
+ctrlspecs <- trainControl(method="cv",
+                          number=10,
+                          savePredictions="all")
+
+```
+```{r}
+# Create vector of potential lambda values
+lambda_vector <- 10^seq(5, -5, length=500)
+
+# Specify Ridge regression model to be estimated using training data
+# and k-fold cross-validation process
+model2 <- train(Y ~ .,
+                data=train_df,
+                preProcess=c("center","scale"),
+                method="glmnet",
+                tuneGrid=expand.grid(alpha=0, lambda=lambda_vector),
+                trControl=ctrlspecs,
+                na.action=na.omit)
+
+# Best tuning parameters (alpha, lambda)
+# model1$bestTune"
+# Best lambda tuning parameter
+# model1$bestTune$lambda
+
+# Ridge regression model coefficients
+coef(model2$finalModel, model2$bestTune$lambda)
+```
+```{r}
+# Plot log(lambda) & root mean-squared error (RMSE)
+plot(log(model2$results$lambda),
+     model2$results$RMSE,
+     xlab="log(lambda)",
+     ylab="Root Mean-Squared Error (RMSE)",
+     xlim=c(-5,0)
+)
+```
+```{r}
+# Create function to identify RMSE for best lambda,
+# where x = RMSE vector, y = lambda vector, &  z = optimal lambda value
+RMSE_ridge <- function(x, y, z){
+  temp <- data.frame(x, y)
+  colnames(temp) <- c("RMSE", "lambda_val")
+  rownum <- which(temp$lambda_val==z)
+  print(temp[rownum,]$RMSE)
+}
+
+# Apply newly created Rsquared_ridge function
+RMSE_ridge(x=model2$results$RMSE,         # x = RMSE vector
+           y=model2$results$lambda,   # y = lambda vector
+           z=model2$bestTune$lambda)  # z = optimal lambda value
+```
+```{r}
+# Create function to identify Rsquared for best lambda,
+# where x = Rsquared vector, y = lambda vector, &  z = optimal lambda value
+Rsquared_ridge <- function(x, y, z){
+  temp <- data.frame(x, y)
+  colnames(temp) <- c("Rsquared", "lambda_val")
+  rownum <- which(temp$lambda_val==z)
+  print(temp[rownum,]$Rsquared)
+}
+
+# Apply newly created Rsquared_ridge function
+Rsquared_ridge(x=model2$results$Rsquared, # x = Rsquared vector
+               y=model2$results$lambda,   # y = lambda vector
+               z=model2$bestTune$lambda)  # z = optimal lambda value
+```
+```{r}
+# Estimate the importance of different predictor variables
+varImp(model2)
+```
+```{r}
+# Visualize the importance of different predictor variables
+library(ggplot2)
+ggplot(varImp(model2))
+```
+```{r}
+# Predict outcome using model from training data based on testing data
+predictions2 <- predict(model2, newdata=test_df)
+# Model performance/accuracy
+mod2perf <- data.frame(RMSE=RMSE(predictions2, test_df$Y),
+                       Rsquared=R2(predictions2, test_df$Y))
+
+# Print model performance/accuracy results
+print(mod2perf)
+```
+```{r}
+# Estimate 95% prediction intervals
+pred.int <- predict(model2, newdata=test_df, interval="prediction")
+
+# Join fitted (predicted) values and upper and lower prediction interval values to data frame
+test_df <- cbind(test_df, pred.int)
+
+# Print first 6 rows
+head(test_df)
+```
