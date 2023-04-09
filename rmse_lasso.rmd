@@ -8,8 +8,15 @@ library(caret)
 
 # load data
 dataset <- read.csv("/Users/manwell/Desktop/Northeastern University Files/Spring 2023/Stat Methods in Engineering - IE7280/Semester Project/Supervised_Learning_R/scaled_normalized_df.csv")
+# drop <- c("X3","X8","X6","X4","X1","X9","X5","X7")
+# dataset <- dataset[,!(names(dataset) %in% drop)]
 # Set seed for reproducible random partitioning of data
 set.seed(1997)
+
+dataset
+```
+```{r}
+
 ```
 ```{r}
 # Partition data and create index matrix of selected values
@@ -21,7 +28,7 @@ test_df <- dataset[-index,]
 
 # Specify 10-fold cross-validation as training method
 ctrlspecs <- trainControl(method="cv",
-                          number=10,
+                          number=200,
                           savePredictions="all")
 
 ```
@@ -31,9 +38,9 @@ lambda_vector <- 10^seq(5, -5, length=500)
 
 # Specify lasso regression model to be estimated using training data
 # and k-fold cross-validation process
-model1 <- train(Y ~ .,
+model1 <- train(log(Y) ~ .,
                 data=train_df,
-                preProcess=c("center","scale"),
+                preProcess=c("center",'scale','nzv','YeoJohnson'),
                 method="glmnet",
                 tuneGrid=expand.grid(alpha=1, lambda=lambda_vector),
                 trControl=ctrlspecs,
@@ -95,16 +102,18 @@ varImp(model1)
 library(ggplot2)
 ggplot(varImp(model1))
 ```
+
 ```{r}
 # Predict outcome using model from training data based on testing data
 predictions1 <- predict(model1, newdata=test_df)
 # Model performance/accuracy
-mod1perf <- data.frame(RMSE=RMSE(predictions1, test_df$Y),
-                       Rsquared=R2(predictions1, test_df$Y))
+mod1perf <- data.frame(RMSE=RMSE(predictions1, log(test_df$Y)),
+                       Rsquared=R2(predictions1, log(test_df$Y)))
 
 # Print model performance/accuracy results
 print(mod1perf)
 ```
+
 ```{r}
 # Estimate 95% prediction intervals
 pred.int <- predict(model1, newdata=test_df, interval="prediction")
@@ -115,3 +124,4 @@ test_df <- cbind(test_df, pred.int)
 # Print first 6 rows
 head(test_df)
 ```
+
