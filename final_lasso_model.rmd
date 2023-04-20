@@ -7,30 +7,32 @@ library(caret)
 
 
 # load data
-dataset <- read.csv("/Users/manwell/Desktop/Northeastern University Files/Spring 2023/Stat Methods in Engineering - IE7280/Semester Project/Supervised_Learning_R/scaled_normalized_df.csv")
-# drop <- c("X3","X8","X6","X4","X1","X9","X5","X7")
-# dataset <- dataset[,!(names(dataset) %in% drop)]
+train_dataset <- read.csv("/Users/manwell/Desktop/Northeastern University Files/Spring 2023/Stat Methods in Engineering - IE7280/Semester Project/Supervised_Learning_R/scaled_normalized_df.csv")
+test_dataset <- read.csv("/Users/manwell/Desktop/Northeastern University Files/Spring 2023/Stat Methods in Engineering - IE7280/Semester Project/testing_df.csv")
+
 # Set seed for reproducible random partitioning of data
+drop <- c("X")
+test_dataset <- test_dataset[,!(names(test_dataset) %in%drop)]
 set.seed(1997)
 
-dataset
+test_dataset
 ```
-```{r}
 
-```
 ```{r}
 # Partition data and create index matrix of selected values
-index <- createDataPartition(dataset$Y, p = 0.8, list=FALSE, times=1)
+index <- createDataPartition(train_dataset$Y, p = 1, list=FALSE, times=1)
+index2 <- createDataPartition(test_dataset$Y, p = 1, list=FALSE, times=1)
 
 # Create test and train data frames
-train_df <- dataset[index,]
-test_df <- dataset[-index,]
+train_df <- train_dataset
+test_df <- test_dataset
 
 # Specify 10-fold cross-validation as training method
 ctrlspecs <- trainControl(method="cv",
-                          number=200,
+                          number=10,
                           savePredictions="all")
 
+length(test_dataset)
 ```
 ```{r}
 
