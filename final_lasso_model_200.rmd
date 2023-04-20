@@ -1,0 +1,133 @@
+```{r}
+# load necessary packages
+library(dplyr)
+library(glmnet)
+library(caret)
+
+
+
+# load data
+train_dataset <- read.csv("/Users/manwell/Desktop/Northeastern University Files/Spring 2023/Stat Methods in Engineering - IE7280/Semester Project/Supervised_Learning_R/scaled_normalized_df.csv")
+test_dataset <- read.csv("/Users/manwell/Desktop/Northeastern University Files/Spring 2023/Stat Methods in Engineering - IE7280/Semester Project/testing_df.csv")
+
+# Set seed for reproducible random partitioning of data
+drop <- c("X")
+test_dataset <- test_dataset[,!(names(test_dataset) %in%drop)]
+set.seed(1997)
+
+test_dataset
+```
+
+```{r}
+# Partition data and create index matrix of selected values
+index <- createDataPartition(train_dataset$Y, p = 1, list=FALSE, times=1)
+index2 <- createDataPartition(test_dataset$Y, p = 1, list=FALSE, times=1)
+
+# Create test and train data frames
+train_df <- train_dataset
+test_df <- test_dataset
+
+# Specify 10-fold cross-validation as training method
+ctrlspecs <- trainControl(method="cv",
+                          number=200,
+                          savePredictions="all")
+
+length(test_dataset)
+```
+```{r}
+
+# Best tuning parameters (alpha, lambda)
+# model1$bestTune"
+# Best lambda tuning parameter
+# model1$bestTune$lambda
+
+
+
+# Create vector of potential lambda values
+lambda_vector <- 10^seq(5, -5, length=500)
+
+# Specify lasso regression model to be estimated using training data
+# and k-fold cross-validation process
+model1 <- train(log(Y) ~ .,
+                data=train_df,
+                preProcess=c("center",'scale','nzv','YeoJohnson'),
+                method="glmnet",
+                tuneGrid=expand.grid(alpha=1, lambda=lambda_vector),
+                trControl=ctrlspecs,
+                na.action=na.omit)
+
+
+# Lasso regression model coefficients
+coef(model1$finalModel, model1$bestTune$lambda)
+```
+```{r}
+# Plot log(lambda) & root mean-squared error (RMSE)
+plot(log(model1$results$lambda),
+     model1$results$RMSE,
+     xlab="log(lambda)",
+     ylab="Root Mean-Squared Error (RMSE)",
+     xlim=c(-5,0)
+)
+```
+```{r}
+# Create function to identify RMSE for best lambda,
+# where x = RMSE vector, y = lambda vector, &  z = optimal lambda value
+RMSE_lasso <- function(x, y, z){
+  temp <- data.frame(x, y)
+  colnames(temp) <- c("RMSE", "lambda_val")
+  rownum <- which(temp$lambda_val==z)
+  print(temp[rownum,]$RMSE)
+}
+
+# Apply newly created Rsquared_lasso function
+RMSE_lasso(x=model1$results$RMSE,         # x = RMSE vector
+           y=model1$results$lambda,   # y = lambda vector
+           z=model1$bestTune$lambda)  # z = optimal lambda value
+```
+```{r}
+# Create function to identify Rsquared for best lambda,
+# where x = Rsquared vector, y = lambda vector, &  z = optimal lambda value
+Rsquared_lasso <- function(x, y, z){
+  temp <- data.frame(x, y)
+  colnames(temp) <- c("Rsquared", "lambda_val")
+  rownum <- which(temp$lambda_val==z)
+  print(temp[rownum,]$Rsquared)
+}
+
+# Apply newly created Rsquared_lasso function
+Rsquared_lasso(x=model1$results$Rsquared, # x = Rsquared vector
+               y=model1$results$lambda,   # y = lambda vector
+               z=model1$bestTune$lambda)  # z = optimal lambda value
+```
+```{r}
+# Estimate the importance of different predictor variables
+varImp(model1)
+```
+```{r}
+# Visualize the importance of different predictor variables
+library(ggplot2)
+ggplot(varImp(model1))
+```
+
+```{r}
+# Predict outcome using model from training data based on testing data
+predictions1 <- predict(model1, newdata=test_df)
+# Model performance/accuracy
+mod1perf <- data.frame(RMSE=RMSE(predictions1, log(test_df$Y)),
+                       Rsquared=R2(predictions1, log(test_df$Y)))
+
+# Print model performance/accuracy results
+print(mod1perf)
+```
+
+```{r}
+# Estimate 95% prediction intervals
+pred.int <- predict(model1, newdata=test_df, interval="prediction")
+
+# Join fitted (predicted) values and upper and lower prediction interval values to data frame
+test_df <- cbind(test_df, pred.int)
+
+# Print first 6 rows
+head(test_df)
+```
+
